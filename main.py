@@ -5,29 +5,45 @@ con = ESL.ESLconnection("127.0.0.1", "8021", "eba1395137fb49d1")
 if con.connected():
     print("connected")
 
-    # Subscribe to all events for testing — later you can narrow it down
-    con.events("plain", "ALL")
+    con.events("plain", "CUSTOM")  # Subscribe to relevant events
 
-    forked_uuids = set()  # prevent duplicate forks
+    forked_uuids = set()
 
     while True:
         e = con.recvEvent()
-        if e:
-            event_name = e.getHeader("Event-Name")
-            print("EVNT: ", event_name)
-            uuid = e.getHeader("Unique-ID")
+        if not e:
+            continue
 
-            # Trigger only for voice events and not already forked
-            if event_name in ["RECV_RTCP_AUDIO", "RECV_SILENCE_END"] and uuid not in forked_uuids:
-                user_id = e.getHeader("variable_bbb_user_id")
-                meeting_id = e.getHeader("variable_bbb_meeting_id")
+        # Filter only CUSTOM events with conference::maintenance subclass
+        if e.getHeader("Event-Name") != "CUSTOM":
+            continue
 
-                if user_id and meeting_id:
-                    print("UUID", uuid, "USER_ID:", user_id, "MEETING_ID:", meeting_id)
+        subclass = e.getHeader("Event-Subclass")
+        if subclass != "conference::maintenance":
+            continue
 
-                    ws_url = f"ws://46.245.79.23:9000/ws/audio?userId={user_id}&meetingId={meeting_id}"
-                    fork_cmd = f"uuid_audio_fork {uuid} start {ws_url} mono 16000"
+        action = e.getHeader("Action")
+        uuid = e.getHeader("Unique-ID")
+        user_id = e.getHeader("Caller-Caller-ID-Number")
+        user_name: str = e.getHeader("Caller-Caller-ID-Name").replace(user_id+"-bbbID-", "")
+        meeting_id = e.getHeader("Caller-Destination-Number")  # bbb meeting ID
+        speak = e.getHeader("Speak")  # "true" / "false"
 
-                    con.api(fork_cmd)
-                    forked_uuids.add(uuid)
-                    print("Forked audio for UUID:", uuid)
+        # Ensure required fields are present
+        if not uuid or not user_id or not meeting_id:
+            continue
+
+        # ✅ User is unmuted — start audio fork
+        if action == "unmute-member" and speak == "true" and uuid not in forked_uuids:
+            ws_url = f"ws://46.245.79.23:9000/ws/audio?userId={user_id}&meetingId={meeting_id}?user_name={user_name}"
+            fork_cmd = f"uuid_audio_fork {uuid} start {ws_url} mono 16000"
+            con.api(fork_cmd)
+            forked_uuids.add(uuid)
+            print(f"[Fork Started] {user_id=} {meeting_id=} {uuid=}")
+
+        # 🔴 User is muted — stop audio fork
+        elif action == "mute-member" and speak == "false" and uuid in forked_uuids:
+            stop_cmd = f"uuid_audio_fork {uuid} stop"
+            con.api(stop_cmd)
+            forked_uuids.remove(uuid)
+            print(f"[Fork Stopped] {user_id=} {meeting_id=} {uuid=}")
