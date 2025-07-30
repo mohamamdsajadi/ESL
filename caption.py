@@ -29,7 +29,7 @@ message = {
             "transcriptId": f"{user_id}-{start_ms}",
             "start": str(start_ms),
             "end": str(end_ms),
-            "text": "",
+            "text": caption_text,
             "transcript": caption_text,
             "locale": locale,
             "result": True,
