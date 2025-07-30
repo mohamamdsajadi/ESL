@@ -40,7 +40,8 @@ if con.connected():
         if action == "unmute-member" and speak == "true" and uuid not in forked_uuids:
             ws_url = f"ws://46.245.79.23:9000/ws/audio?user_id={user_id}&meeting_id={meeting_id}&user_name={user_name}"
             fork_cmd = f"uuid_audio_fork {uuid} start {ws_url} mono 16000"
-            con.api(fork_cmd)
+            res =  con.bgapi(fork_cmd)
+            print(res.getBody())
             forked_uuids.add(uuid)
             print(f"[Fork Started] {user_id=} {meeting_id=} {uuid=}")
 
