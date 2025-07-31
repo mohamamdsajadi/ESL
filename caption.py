@@ -5,8 +5,8 @@ import redis
 # Adjust host/port if your Redis server uses different values
 r = redis.Redis(host="127.0.0.1", port=6379)
 
-meeting_id = "8f9a5dd0bdae1033a275102c12a7040b22a3ef22-1753909104959"
-user_id = "w_5bt9yyqttlbb"
+meeting_id = "8f9a5dd0bdae1033a275102c12a7040b22a3ef22-1753949880184"
+user_id = "w_dsraz8xm8mhn"
 locale = "en-US"
 caption_text = "Hello from a Python script!"
 
