@@ -1,20 +1,15 @@
-import asyncio
-import websockets
+import ESL
 import json
 import redis
 import time
 
-# Redis channel used by BigBlueButton
+# Redis caption channel for BigBlueButton
 TO_AKKA_APPS_CHAN_2x = "to-akka-apps-redis-channel"
-
-# Set up Redis connection
 r = redis.Redis(host="localhost", port=6379)
 
-
-# Caption sender (your original function with timestamp support)
+# Function to push transcript to BBB
 def send_caption(meeting_id, user_id, text, locale="en-US"):
     now = int(time.time() * 1000)
-
     payload = {
         "envelope": {
             "name": "UpdateTranscriptPubMsg",
@@ -42,33 +37,44 @@ def send_caption(meeting_id, user_id, text, locale="en-US"):
     r.publish(TO_AKKA_APPS_CHAN_2x, json.dumps(payload))
     print(f"[Caption Sent] {user_id=} {meeting_id=} {text=}")
 
+# Connect to FreeSWITCH ESL
+con = ESL.ESLconnection("127.0.0.1", "8021", "eba1395137fb49d1")
 
-# WebSocket listener for STT server responses
-async def listen_to_stt_server():
-    uri = "ws://46.245.79.23:9000/ws/audio"
+if not con.connected():
+    print("❌ ESL connection failed.")
+    exit(1)
 
-    async with websockets.connect(uri) as websocket:
-        print(f"[Connected to STT Server at {uri}]")
+print("✅ Connected to FreeSWITCH ESL")
+con.events("plain", "CUSTOM")  # Only listen to CUSTOM events
 
-        while True:
-            try:
-                message = await websocket.recv()
-                data = json.loads(message)
+# Event loop to listen for transcription responses
+while True:
+    e = con.recvEvent()
+    if not e:
+        continue
 
-                # Expecting: { "user_id": ..., "meeting_id": ..., "text": ... }
-                user_id = data.get("user_id")
-                meeting_id = data.get("meeting_id")
-                text = data.get("text")
+    if e.getHeader("Event-Name") != "CUSTOM":
+        continue
 
-                if user_id and meeting_id and text:
-                    send_caption(meeting_id, user_id, text)
-                else:
-                    print(f"[WARN] Missing fields in message: {data}")
+    subclass = e.getHeader("Event-Subclass")
 
-            except Exception as e:
-                print(f"[ERROR] {e}")
-                await asyncio.sleep(2)  # Backoff on failure
+    if subclass == "mod_audio_fork::response":
+        print("response subclass detected")
+        raw_msg = e.getHeader("mod_audio_fork-response")
+        uuid = e.getHeader("Unique-ID")
 
+        try:
+            data = json.loads(raw_msg)
+            user_id = data.get("user_id")
+            meeting_id = data.get("meeting_id")
+            text = data.get("text")
 
-# Run the listener
-asyncio.run(listen_to_stt_server())
+            if user_id and meeting_id and text:
+                print(user_id, meeting_id, text , "pushed")
+                send_caption(meeting_id, user_id, text)
+            else:
+                print(f"[WARN] Missing fields in STT response: {raw_msg}")
+
+        except Exception as err:
+            print(f"[ERROR] Failed to parse STT response: {err}")
+            print(f"[RAW] {raw_msg}")
