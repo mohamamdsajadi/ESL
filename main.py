@@ -13,7 +13,10 @@ if con.connected():
         e = con.recvEvent()
         if not e:
             continue
+        print("*******************")
         print(e.getHeader("Event-Name"))
+        print(e.serialize())
+        print("------------------------")
 
         # Filter only CUSTOM events with conference::maintenance subclass
         if e.getHeader("Event-Name") != "CUSTOM":
