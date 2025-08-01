@@ -10,7 +10,7 @@ app = FastAPI()
 
 # Pydantic model for input validation
 class CaptionRequest(BaseModel):
-    meeting_id: str
+    variable_conf_name: str
     user_id: str
     text: str
 
@@ -54,5 +54,6 @@ def send_caption(meeting_id, user_id, text, locale="en-US"):
 # POST endpoint to receive transcript
 @app.post("/caption")
 async def push_caption(req: CaptionRequest):
-    send_caption(req.meeting_id, req.user_id, req.text)
+    meeting_id = r.get(f"bbb-transcription-manager_voiceToMeeting_{req.variable_conf_name}")
+    send_caption(meeting_id, req.user_id, req.text)
     return {"status": "ok", "message": "Caption pushed to Redis"}
