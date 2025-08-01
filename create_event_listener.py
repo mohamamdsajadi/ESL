@@ -21,8 +21,8 @@ VOICE_TO_MEETING_KEY = "bbb-transcription-manager_voiceToMeeting_"
 
 def handle_meeting_created(payload):
     try:
-        voice_conf = payload["body"]["voiceProp"]["voiceConf"]
-        meeting_id = payload["body"]["meetingProp"]["intId"]
+        voice_conf = payload["body"]["props"]["voiceProp"]["voiceConf"]
+        meeting_id = payload["body"]["props"]["meetingProp"]["intId"]
         r.set(f"{VOICE_TO_MEETING_KEY}{voice_conf}", meeting_id)
         logger.info(f"🟢 Meeting Created: voiceConf={voice_conf} → meetingId={meeting_id}")
     except Exception as e:
