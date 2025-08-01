@@ -2,7 +2,7 @@ import redis
 import threading
 import json
 import logging
-
+import time
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -46,3 +46,5 @@ def redis_listener():
 
 # Start thread
 threading.Thread(target=redis_listener, daemon=True).start()
+while True:
+    time.sleep(1)
