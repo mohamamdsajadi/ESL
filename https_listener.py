@@ -55,5 +55,7 @@ def send_caption(meeting_id, user_id, text, locale="en-US"):
 @app.post("/caption")
 async def push_caption(req: CaptionRequest):
     meeting_id = r.get(f"bbb-transcription-manager_voiceToMeeting_{req.variable_conf_name}")
+    if isinstance(meeting_id, bytes):
+        meeting_id = meeting_id.decode("utf-8")
     send_caption(meeting_id, req.user_id, req.text)
     return {"status": "ok", "message": "Caption pushed to Redis"}
