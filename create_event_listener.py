@@ -39,7 +39,7 @@ def redis_listener():
 
         try:
             data = json.loads(message["data"])
-            if data.get("envelope", {}).get("name") == "MeetingCreatedEvtMsg":
+            if data.get("envelope", {}).get("name") == "CreateMeetingReqMsg":
                 handle_meeting_created(data["core"])
         except Exception as e:
             logger.error("❌ Invalid Redis Message", exc_info=e)
