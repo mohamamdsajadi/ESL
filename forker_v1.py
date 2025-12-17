@@ -15,8 +15,9 @@ def main():
     while True:
         con = ESL.ESLconnection(ESL_HOST, ESL_PORT, ESL_PASS)
         if not con.connected():
+            print("connection is not stablished")
             continue
-
+        print("connection stablished")
         # Subscribe and filter server-side
         con.events("plain", "CUSTOM")
         con.filter("Event-Subclass", "conference::maintenance")
@@ -26,6 +27,7 @@ def main():
         while con.connected():
             print("connection stablished.")
             e = con.recvEvent()
+            print("before e")
             if not e:
                 print("BREAK")
                 # connection dropped or timeout; break to reconnect
