@@ -29,6 +29,7 @@ def main():
             if not e:
                 # connection dropped or timeout; break to reconnect
                 break
+            print("Event received.")
 
             event_name = e.getHeader("Event-Name")
             subclass   = e.getHeader("Event-Subclass")
@@ -41,13 +42,16 @@ def main():
 
             # Basic checks
             if event_name != "CUSTOM" or subclass != "conference::maintenance":
+                print("Event received Not custom.")
                 continue
             if not uuid or not user_id or not conf_name or not user_name:
+                print("one of user conf or user name is not present" , user_id, user_name, conf_name)
                 continue
 
             # BBB-style caller name often has "<user_id>-bbbID-<fullname>"
             try:
                 user_name_clean = user_name.replace(f"{user_id}-bbbID-", "")
+                print("user_name_clean=")
             except Exception:
                 user_name_clean = user_name
 
