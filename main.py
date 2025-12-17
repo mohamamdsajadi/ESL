@@ -15,6 +15,7 @@ if con.connected():
             continue
         print("*******************")
         print(e.getHeader("Event-Name"))
+        print(e.serialize())
         print("------------------------")
 
         # Filter only CUSTOM events with conference::maintenance subclass
@@ -33,8 +34,6 @@ if con.connected():
         user_name: str = e.getHeader("Caller-Caller-ID-Name").replace(user_id+"-bbbID-", "")
         variable_conference_name = e.getHeader("variable_conference_name")  # bbb variable conf name
         speak = e.getHeader("Speak")  # "true" / "false"
-
-        print("special log",variable_conference_name, user_name, user_id)
 
         # Ensure required fields are present
         if not uuid or not user_id or not variable_conference_name:
