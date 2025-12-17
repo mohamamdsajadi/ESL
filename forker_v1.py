@@ -27,6 +27,7 @@ def main():
             print("connection stablished.")
             e = con.recvEvent()
             if not e:
+                print("BREAK")
                 # connection dropped or timeout; break to reconnect
                 break
             print("Event received.")
