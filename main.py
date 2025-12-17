@@ -32,7 +32,7 @@ if con.connected():
         if not user_id:
            continue
         user_name: str = e.getHeader("Caller-Caller-ID-Name").replace(user_id+"-bbbID-", "")
-        variable_conference_name = e.getHeader("variable_conference_name")  # bbb variable conf name
+        variable_conference_name = e.getHeader("Conference-Unique-ID")  # bbb variable conf name
         speak = e.getHeader("Speak")  # "true" / "false"
 
         print("special log",variable_conference_name, user_name, user_id)
