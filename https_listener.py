@@ -10,22 +10,48 @@ app = FastAPI()
 
 # Pydantic model for input validation
 class CaptionRequest(BaseModel):
-    variable_conf_name: str
+    conf_name: str
     user_id: str
     text: str
 
-TO_AKKA_APPS_CHAN_2x = "to-akka-apps-redis-channel"
-r = redis.Redis(host="localhost", port=6379)
-
+REDIS_HOST = "localhost"
+REDIS_PORT = 6379
+redis_client = redis.Redis(
+    host=REDIS_HOST,
+    port=REDIS_PORT,
+    decode_responses=True
+)
 # Caption sender function
 def send_caption(meeting_id, user_id, text, locale="en-US"):
+    # -----------------------------
+    # Configuration
+    # -----------------------------
 
-    now = int(time.time() * 1000)
+    REDIS_CHANNEL = "to-akka-apps-redis-channel"
+
+    # -----------------------------
+    # Runtime variables
+    # -----------------------------
+
+    transcript_id = f"{user_id}-{int(time.time() * 1000)}"
+    timestamp = int(time.time() * 1000)
+
+    # -----------------------------
+    # Redis connection
+    # -----------------------------
+
+
+    # -----------------------------
+    # Message payload
+    # -----------------------------
     payload = {
         "envelope": {
             "name": "UpdateTranscriptPubMsg",
-            "routing": {"meetingId": meeting_id, "userId": user_id},
-            "timestamp": now
+            "routing": {
+                "meetingId": meeting_id,
+                "userId": user_id
+            },
+            "timestamp": timestamp
         },
         "core": {
             "header": {
@@ -34,28 +60,34 @@ def send_caption(meeting_id, user_id, text, locale="en-US"):
                 "userId": user_id
             },
             "body": {
-                "transcriptId": f"{user_id}-0",
-                "start": "0",
-                "end": "0",
+                "transcriptId": transcript_id,
+                "start": 4,
+                "end": 4,
                 "text": "",
                 "transcript": text,
                 "locale": locale,
-                "result": True
+                "result": False
             }
         }
     }
 
-    r.publish(TO_AKKA_APPS_CHAN_2x, json.dumps(payload))
-    print("Caption sent to Redis.")
+    # -----------------------------
+    # Publish to BigBlueButton Akka
+    # -----------------------------
+    redis_client.publish(
+        REDIS_CHANNEL,
+        json.dumps(payload)
+    )
 
-    r.publish(TO_AKKA_APPS_CHAN_2x, json.dumps(payload))
-    print(f"[Caption Sent] {user_id=} {meeting_id=} {text=}")
+    print("Transcript message published successfully.")
 
 # POST endpoint to receive transcript
 @app.post("/caption")
 async def push_caption(req: CaptionRequest):
-    meeting_id = r.get(f"bbb-transcription-manager_voiceToMeeting_{req.variable_conf_name}")
+    meeting_id = redis_client.get(f"bbb-transcription-manager_voiceToMeeting_{req.conf_name}")
     if isinstance(meeting_id, bytes):
         meeting_id = meeting_id.decode("utf-8")
     send_caption(meeting_id, req.user_id, req.text)
     return {"status": "ok", "message": "Caption pushed to Redis"}
+
+
