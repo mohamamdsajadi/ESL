@@ -32,6 +32,7 @@ if con.connected():
         if not user_id:
            continue
         user_name: str = e.getHeader("Caller-Caller-ID-Name").replace(user_id+"-bbbID-", "")
+        user_id = user_id.rsplit("_", 1)[0]
         conference_name = e.getHeader("Conference-Name")  # bbb variable conf name
         speak = e.getHeader("Speak")  # "true" / "false"
 
@@ -44,7 +45,7 @@ if con.connected():
 
         # ✅ User is unmuted — start audio fork
         if action == "unmute-member" and speak == "true" and uuid not in forked_uuids:
-            ws_url = f"ws://46.245.79.23:9000/ws/audio?user_id={user_id}&conference_name={conference_name}&user_name={user_name}"
+            ws_url = f"ws://46.245.79.23:9000/api/v1/audio/ws/audio?user_id={user_id}&conference_name={conference_name}&user_name={user_name}"
             fork_cmd = f"uuid_audio_fork {uuid} start {ws_url} mono 16000"
             res =  con.bgapi(fork_cmd)
             print(res.getBody())

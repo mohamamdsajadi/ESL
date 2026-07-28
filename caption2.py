@@ -42,7 +42,7 @@ def send_caption(meeting_id, user_id, text, locale="en-US"):
 
 # Example usage
 send_caption(
-    meeting_id="8f9a5dd0bdae1033a275102c12a7040b22a3ef22-1753949880184",
-    user_id="w_dsraz8xm8mhn",
+    meeting_id="2676c17f7c107e9f7a830d24439dd97d9b05656-1766330592507",
+    user_id="w_qx1ooacjuyfg",
     text="Hello World"
 )
