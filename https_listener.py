@@ -1,49 +1,65 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import redis
 import json
 import time
+import hashlib
+import requests
+from urllib.parse import urlencode
 
 app = FastAPI()
 
-# Constants
 
-# Pydantic model for input validation
+# --------------------------------
+# Request models
+# --------------------------------
+
 class CaptionRequest(BaseModel):
     conf_name: str
     user_id: str
     text: str
 
+
+class ChatRequest(BaseModel):
+    conf_name: str
+    message: str
+
+
+# --------------------------------
+# Redis configuration
+# --------------------------------
+
 REDIS_HOST = "localhost"
 REDIS_PORT = 6379
+
 redis_client = redis.Redis(
     host=REDIS_HOST,
     port=REDIS_PORT,
     decode_responses=True
 )
-# Caption sender function
+
+
+# --------------------------------
+# BigBlueButton configuration
+# --------------------------------
+
+BBB_URL = "https://vcdemo.mparsict.com/bigbluebutton/"
+BBB_SECRET = "GkYHKfLS4NvDss0LfXWDyUjRtcJ4H0s9RQdSPZkI18Y"
+
+TRANSCRIPTION_BOT_NAME = "Transcription Bot"
+
+
+# ============================================
+# Caption
+# ============================================
+
 def send_caption(meeting_id, user_id, text, locale="en-US"):
-    # -----------------------------
-    # Configuration
-    # -----------------------------
 
     REDIS_CHANNEL = "to-akka-apps-redis-channel"
-
-    # -----------------------------
-    # Runtime variables
-    # -----------------------------
 
     transcript_id = f"{user_id}-{int(time.time() * 1000)}"
     timestamp = int(time.time() * 1000)
 
-    # -----------------------------
-    # Redis connection
-    # -----------------------------
-
-
-    # -----------------------------
-    # Message payload
-    # -----------------------------
     payload = {
         "envelope": {
             "name": "UpdateTranscriptPubMsg",
@@ -71,9 +87,6 @@ def send_caption(meeting_id, user_id, text, locale="en-US"):
         }
     }
 
-    # -----------------------------
-    # Publish to BigBlueButton Akka
-    # -----------------------------
     redis_client.publish(
         REDIS_CHANNEL,
         json.dumps(payload)
@@ -81,13 +94,97 @@ def send_caption(meeting_id, user_id, text, locale="en-US"):
 
     print("Transcript message published successfully.")
 
-# POST endpoint to receive transcript
+
 @app.post("/caption")
 async def push_caption(req: CaptionRequest):
-    meeting_id = redis_client.get(f"bbb-transcription-manager_voiceToMeeting_{req.conf_name}")
-    if isinstance(meeting_id, bytes):
-        meeting_id = meeting_id.decode("utf-8")
-    send_caption(meeting_id, req.user_id, req.text)
-    return {"status": "ok", "message": "Caption pushed to Redis"}
+
+    meeting_id = redis_client.get(
+        f"bbb-transcription-manager_voiceToMeeting_{req.conf_name}"
+    )
+
+    if not meeting_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Meeting ID not found"
+        )
+
+    send_caption(
+        meeting_id,
+        req.user_id,
+        req.text
+    )
+
+    return {
+        "status": "ok",
+        "message": "Caption pushed to Redis"
+    }
 
 
+# ============================================
+# Public Chat
+# ============================================
+
+def send_public_chat(meeting_id: str, message: str):
+
+    api_call = "sendChatMessage"
+
+    params = {
+        "meetingID": meeting_id,
+        "message": message,
+        "userName": TRANSCRIPTION_BOT_NAME
+    }
+
+    query_string = urlencode(params)
+
+    checksum_source = (
+        api_call
+        + query_string
+        + BBB_SECRET
+    )
+
+    checksum = hashlib.sha1(
+        checksum_source.encode("utf-8")
+    ).hexdigest()
+
+    params["checksum"] = checksum
+
+    response = requests.get(
+        f"{BBB_URL}/{api_call}",
+        params=params,
+        timeout=10
+    )
+
+    response.raise_for_status()
+
+    print(
+        f"Public chat message sent: "
+        f"{meeting_id=} {message=}"
+    )
+
+    return response.text
+
+
+@app.post("/chat")
+async def push_chat(req: ChatRequest):
+
+    try:
+
+        response = send_public_chat(
+            req.conf_name,
+            req.message
+        )
+
+        return {
+            "status": "ok",
+            "message": "Message sent to public chat",
+            "sender": TRANSCRIPTION_BOT_NAME
+        }
+
+    except Exception as e:
+
+        print("Failed to send public chat message:", e)
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )

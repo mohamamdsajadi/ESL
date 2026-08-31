@@ -1,0 +1,54 @@
+#!/bin/bash
+
+SESSION="bbb-transcription"
+DIR="/home/mohammad/ESL_python"
+VENV="$DIR/ennv/bin/activate"
+
+# Kill old session if it already exists
+tmux kill-session -t "$SESSION" 2>/dev/null
+
+# Pane 1 — BBB meeting event listener
+tmux new-session -d -s "$SESSION" -n "services" -c "$DIR"
+tmux select-pane -t "$SESSION:0.0" -T "meeting-events"
+tmux send-keys -t "$SESSION:0.0" \
+  "source $VENV && python3 create_event_listener.py" C-m
+
+# Pane 2 — Caption HTTP API
+tmux split-window -h -t "$SESSION:0" -c "$DIR"
+tmux select-pane -t "$SESSION:0.1" -T "caption-api"
+tmux send-keys -t "$SESSION:0.1" \
+  "source $VENV && uvicorn https_listener:app --host 0.0.0.0 --port 8000" C-m
+
+# Pane 3 — FreeSWITCH audio fork listener
+tmux split-window -v -t "$SESSION:0.1" -c "$DIR"
+tmux select-pane -t "$SESSION:0.2" -T "audio-fork"
+tmux send-keys -t "$SESSION:0.2" \
+  "source $VENV && python3 main.py" C-m
+
+# Arrange panes nicely
+tmux select-layout -t "$SESSION:0" tiled
+
+# Show pane names
+tmux set-option -t "$SESSION" pane-border-status top
+tmux set-option -t "$SESSION" pane-border-format " #{pane_title} "
+
+
+# Enable pane titles
+tmux set-option -t "$SESSION" pane-border-status top
+
+# Default borders
+tmux set-option -t "$SESSION" status-style "bg=black,fg=colour46"
+tmux set-option -t "$SESSION" status-left "#[bold] BBB TRANSCRIPTION "
+tmux set-option -t "$SESSION" status-right "#[fg=colour51]%H:%M #[fg=colour46]%Y-%m-%d "
+
+# Pane titles
+tmux select-pane -t "$SESSION:0.0" -T "MEETING EVENTS"
+tmux select-pane -t "$SESSION:0.1" -T "CAPTION API"
+tmux select-pane -t "$SESSION:0.2" -T "AUDIO FORK"
+
+# Different title colors based on pane index
+tmux set-option -t "$SESSION" pane-border-format \
+'#[fg=colour46] #{?pane_active,▶, } #[fg=colour51]#{pane_title} #[fg=colour240]| pane #{pane_index} '
+
+# Attach
+tmux attach -t "$SESSION"

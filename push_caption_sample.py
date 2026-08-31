@@ -12,8 +12,8 @@ REDIS_CHANNEL = "to-akka-apps-redis-channel"
 # -----------------------------
 # Runtime variables
 # -----------------------------
-meeting_id = "42676c17f7c107e9f7a830d24439dd97d9b05656-1766330592507"
-user_id = "w_qx1ooacjuyfg"
+meeting_id = "e1948961754f587b62331af1018b75fa68f23779-1787724622105"
+user_id = "w_jmnfvlwkkibh"
 
 transcript_id = f"{user_id}-{int(time.time() * 1000)}"
 timestamp = int(time.time() * 1000)
