@@ -259,6 +259,7 @@ def create_meeting(request: CreateMeetingRequest):
                 "message": root.findtext("message"),
             }
         )
+    print(root)
 
     # -------------------------
     # 2. Generate moderator join URL
