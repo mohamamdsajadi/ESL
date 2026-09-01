@@ -1,11 +1,12 @@
 import ESL
+from urllib.parse import urlencode, quote
 
 con = ESL.ESLconnection("127.0.0.1", "8021", "d5fa706c7fbac6aa")
 
 if con.connected():
     print("connected")
 
-    con.events("plain", "ALL")  # Subscribe to relevant events
+    con.events("plain", "ALL")
 
     forked_uuids = set()
 
@@ -13,12 +14,11 @@ if con.connected():
         e = con.recvEvent()
         if not e:
             continue
+
         print("*******************")
         print(e.getHeader("Event-Name"))
-        # print(e.serialize())
         print("------------------------")
 
-        # Filter only CUSTOM events with conference::maintenance subclass
         if e.getHeader("Event-Name") != "CUSTOM":
             continue
 
@@ -29,33 +29,65 @@ if con.connected():
         action = e.getHeader("Action")
         uuid = e.getHeader("Unique-ID")
         user_id = e.getHeader("Caller-Caller-ID-Number")
+
         if not user_id:
-           continue
-        user_name: str = e.getHeader("Caller-Caller-ID-Name").replace(user_id+"-bbbID-", "")
+            continue
+
+        user_name = e.getHeader("Caller-Caller-ID-Name").replace(
+            user_id + "-bbbID-", ""
+        )
+
         user_id = user_id.rsplit("_", 1)[0]
-        conference_name = e.getHeader("Conference-Name")  # bbb variable conf name
-        speak = e.getHeader("Speak")  # "true" / "false"
+
+        conference_name = e.getHeader("Conference-Name")
+        speak = e.getHeader("Speak")
 
         print("special log", conference_name, user_name, user_id)
 
-        # Ensure required fields are present
         if not uuid or not user_id or not conference_name:
             print("no uuid or user_id or conference_name")
             continue
 
-        # ✅ User is unmuted — start audio fork
+        # User is unmuted — start audio fork
         if action == "unmute-member" and speak == "true" and uuid not in forked_uuids:
-            #ws_url = f"ws://46.245.79.23:9000/api/v1/audio/ws/audio?user_id={user_id}&conference_name={conference_name}&user_name={user_name}"
-            ws_url = f"ws://46.245.79.23:9000/ws/transcribe?user_id={user_id}&conference_name={conference_name}&user_name={user_name}"
-            fork_cmd = f"uuid_audio_fork {uuid} start {ws_url} mono 16000"
-            res =  con.bgapi(fork_cmd)
-            print(res.getBody())
-            forked_uuids.add(uuid)
-            print(f"[Fork Started] {user_id=} {conference_name=} {uuid=}")
 
-        # 🔴 User is muted — stop audio fork
+            query_params = urlencode(
+                {
+                    "user_id": user_id,
+                    "conference_name": conference_name,
+                    "user_name": user_name,
+                },
+                quote_via=quote,
+            )
+
+            ws_url = (
+                f"ws://46.245.79.23:9000/ws/transcribe?"
+                f"{query_params}"
+            )
+
+            fork_cmd = f"uuid_audio_fork {uuid} start {ws_url} mono 16000"
+
+            print("Fork command:", fork_cmd)
+
+            res = con.bgapi(fork_cmd)
+            print(res.getBody())
+
+            forked_uuids.add(uuid)
+
+            print(
+                f"[Fork Started] "
+                f"{user_id=} {user_name=} {conference_name=} {uuid=}"
+            )
+
+        # User is muted — stop audio fork
         elif action == "mute-member" and speak == "false" and uuid in forked_uuids:
+
             stop_cmd = f"uuid_audio_fork {uuid} stop"
+
             con.api(stop_cmd)
             forked_uuids.remove(uuid)
-            print(f"[Fork Stopped] {user_id=} {conference_name=} {uuid=}")
+
+            print(
+                f"[Fork Stopped] "
+                f"{user_id=} {conference_name=} {uuid=}"
+            )

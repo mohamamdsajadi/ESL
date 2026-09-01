@@ -43,7 +43,7 @@ def send_public_chat(meeting_id, message, user_name="System"):
 
 if __name__ == "__main__":
     send_public_chat(
-        meeting_id="",
+        meeting_id="1aead56cce0cc69a7a0c095ec69568e907f252b8-1788180200102",
         message="https://vcdemo.mparsict.com/bigbluebutton/api                           Analysis completed <button onclick=\"callAPI()\">Open Report</button>",
         user_name="Transcription Bot"
     )

@@ -5,6 +5,8 @@ import json
 import time
 import hashlib
 import requests
+import uuid
+import xml.etree.ElementTree as ET
 from urllib.parse import urlencode
 
 app = FastAPI()
@@ -24,6 +26,10 @@ class ChatRequest(BaseModel):
     conf_name: str
     message: str
 
+
+class CreateMeetingRequest(BaseModel):
+    name: str
+    moderator_name: str = "Moderator"
 
 # --------------------------------
 # Redis configuration
@@ -188,3 +194,108 @@ async def push_chat(req: ChatRequest):
             status_code=500,
             detail=str(e)
         )
+
+
+@app.post("/create_meeting")
+def create_meeting(request: CreateMeetingRequest):
+
+    meeting_id = str(uuid.uuid4())
+
+    # -------------------------
+    # 1. Create meeting
+    # -------------------------
+
+    create_params = {
+        "name": request.name,
+        "meetingID": meeting_id,
+        "record": "false",
+        "autoStartRecording": "false",
+        "allowStartStopRecording": "true",
+    }
+
+    create_query = urlencode(create_params)
+
+    create_checksum = hashlib.sha1(
+        (
+            "create"
+            + create_query
+            + BBB_SECRET
+        ).encode("utf-8")
+    ).hexdigest()
+
+    create_url = (
+        f"{BBB_URL}/api/create?"
+        f"{create_query}"
+        f"&checksum={create_checksum}"
+    )
+
+    try:
+        response = requests.get(
+            create_url,
+            timeout=10
+        )
+
+        response.raise_for_status()
+
+    except requests.RequestException as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Could not connect to BigBlueButton: {str(e)}"
+        )
+
+    try:
+        root = ET.fromstring(response.text)
+    except ET.ParseError:
+        raise HTTPException(
+            status_code=502,
+            detail="Invalid response received from BigBlueButton"
+        )
+
+    if root.findtext("returncode") != "SUCCESS":
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message_key": root.findtext("messageKey"),
+                "message": root.findtext("message"),
+            }
+        )
+
+    # -------------------------
+    # 2. Generate moderator join URL
+    # -------------------------
+
+    join_params = {
+        "meetingID": meeting_id,
+        "fullName": request.moderator_name,
+        "role": "MODERATOR",
+        "redirect": "true",
+    }
+
+    join_query = urlencode(join_params)
+
+    join_checksum = hashlib.sha1(
+        (
+            "join"
+            + join_query
+            + BBB_SECRET
+        ).encode("utf-8")
+    ).hexdigest()
+
+    join_url = (
+        f"{BBB_URL}/api/join?"
+        f"{join_query}"
+        f"&checksum={join_checksum}"
+    )
+
+    # -------------------------
+    # 3. Return meeting info
+    # -------------------------
+
+    return {
+        "success": True,
+        "meeting_id": meeting_id,
+        "internal_meeting_id": root.findtext("internalMeetingID"),
+        "meeting_name": request.name,
+        "moderator_name": request.moderator_name,
+        "join_url": join_url,
+    }
