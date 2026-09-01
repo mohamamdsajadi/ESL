@@ -421,7 +421,7 @@ def create_meeting(
 
     invite_url = (
         f"{PUBLIC_APP_URL}"
-        f"/room/{meeting_id}"
+        f"/room_/{meeting_id}"
     )
 
 
@@ -516,7 +516,7 @@ def create_meeting(
 # ============================================================
 
 @app.get(
-    "/room/{meeting_id}",
+    "/room_/{meeting_id}",
     response_class=HTMLResponse
 )
 def room_page(
