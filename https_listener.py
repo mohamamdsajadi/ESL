@@ -57,7 +57,7 @@ redis_client = redis.Redis(
 # ============================================================
 
 
-BBB_URL = "https://vcdemo.mparsict.com/bigbluebutton/"
+BBB_BASE_URL = "https://vcdemo.mparsict.com/bigbluebutton/"
 BBB_SECRET = "GkYHKfLS4NvDss0LfXWDyUjRtcJ4H0s9RQdSPZkI18Y"
 
 if not BBB_SECRET:
