@@ -773,7 +773,7 @@ def room_page(
 
     <form
         method="post"
-        action="/room/{safe_meeting_id}/join"
+        action="/room_/{safe_meeting_id}/join"
     >
 
         <label>
@@ -815,7 +815,7 @@ def room_page(
 # ============================================================
 
 @app.post(
-    "/room/{meeting_id}/join"
+    "/room_/{meeting_id}/join"
 )
 def join_shared_room(
     meeting_id: str,
