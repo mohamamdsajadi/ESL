@@ -74,10 +74,7 @@ if not BBB_SECRET:
 # Production example behind nginx:
 # https://vcdemo.mparsict.com
 #
-PUBLIC_APP_URL = os.getenv(
-    "PUBLIC_APP_URL",
-    "http://vcdemo.mparsict.com:8000"
-)
+PUBLIC_APP_URL = "https://vcdemo.mparsict.com"
 
 
 TRANSCRIPTION_BOT_NAME = "Transcription Bot"
