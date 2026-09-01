@@ -296,6 +296,7 @@ def create_meeting(request: CreateMeetingRequest):
         "success": True,
         "meeting_id": meeting_id,
         "internal_meeting_id": root.findtext("internalMeetingID"),
+        "conference_name": root.findtext("voiceBridge"),
         "meeting_name": request.name,
         "moderator_name": request.moderator_name,
         "join_url": join_url,
